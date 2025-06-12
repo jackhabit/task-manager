@@ -1,0 +1,24 @@
+<div class="centered-content">
+  <div class="box">
+    <h1 class="title">Create new list</h1>
+    <div class="field is-grouped">
+      <p class="control is-expanded">
+        <input
+          type="text"
+          class="input has-background-light is-medium has-text-black"
+          placeholder="List title"
+          [(ngModel)]="title"
+        />
+      </p>
+      <p class="control">
+        <button
+          class="button is-primary has-text-white is-medium"
+          (click)="createList()"
+        >
+          Add
+        </button>
+      </p>
+    </div>
+    <button class="buttonBack" routerLink="/">Go back</button>
+  </div>
+</div>
