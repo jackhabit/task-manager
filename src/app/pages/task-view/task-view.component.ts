@@ -1,8 +1,8 @@
 import { Component, signal, effect, computed } from '@angular/core';
-import { TasksService } from '../../core/services/tasks.service';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { Task, TaskList } from '../../models/task';
 
 @Component({
   standalone: true,
@@ -12,7 +12,8 @@ import { FormsModule } from '@angular/forms';
   styleUrl: './task-view.component.scss'
 })
 export class TaskViewComponent {
-  lists = signal<{ title: string, tasks: any[] }[]>([]);
+  // Signals for state management
+  lists = signal<TaskList[]>([]);
   selectedListIndex = signal<number | null>(null);
   showAddTask = signal(false);
   newTaskText = signal('');
@@ -23,31 +24,33 @@ export class TaskViewComponent {
   newTaskDeadline = signal('');
   today = new Date().toISOString().slice(0, 10);
 
-  constructor(private tasksService: TasksService, private router: Router) {
+  constructor(private router: Router) {
     // Load lists from localStorage or use default
     const saved = localStorage.getItem('lists');
-    this.lists.set(saved ? JSON.parse(saved) : [{ title: 'List #1', tasks: [] }]);
+    this.lists.set(saved ? JSON.parse(saved) as TaskList[] : [{ title: 'List #1', tasks: [] }]);
 
     // Check if a new list was created and passed via navigation state
     const nav = this.router.getCurrentNavigation();
     const state = nav?.extras.state as { newListTitle?: string };
-if (typeof state?.newListTitle === 'string' && state.newListTitle.trim() !== '') {
-  this.lists.update(lists => [
-    ...lists,
-    { title: state.newListTitle!, tasks: [] }
-  ]);
-}
+    if (typeof state?.newListTitle === 'string' && state.newListTitle.trim() !== '') {
+      this.lists.update(lists => [
+        ...lists,
+        { title: state.newListTitle!, tasks: [] }
+      ]);
+    }
 
-    // Effect to save lists on change
+    // Effect to save lists to localStorage whenever they change
     effect(() => {
       localStorage.setItem('lists', JSON.stringify(this.lists()));
     });
   }
 
+  // Select a list by its index
   selectList(index: number) {
     this.selectedListIndex.set(index);
   }
 
+  // Add a new task to the selected list
   addTaskToSelectedList() {
     const idx = this.selectedListIndex();
     const text = this.newTaskText().trim();
@@ -65,7 +68,7 @@ if (typeof state?.newListTitle === 'string' && state.newListTitle.trim() !== '')
             createdAt: new Date().toISOString(),
             completed: false,
             priority: this.priority(),
-            deadline: deadline 
+            deadline: deadline || undefined
           }
         ]
       };
@@ -77,6 +80,7 @@ if (typeof state?.newListTitle === 'string' && state.newListTitle.trim() !== '')
     this.priority.set('low');
   }
 
+  // Remove a list by its index
   removeList(index: number) {
     this.lists.update(lists => {
       const newLists = [...lists];
@@ -91,6 +95,7 @@ if (typeof state?.newListTitle === 'string' && state.newListTitle.trim() !== '')
     }
   }
 
+  // Remove a task from the selected list by its index
   removeTaskFromSelectedList(taskIndex: number) {
     const idx = this.selectedListIndex();
     if (idx === null) return;
@@ -103,11 +108,13 @@ if (typeof state?.newListTitle === 'string' && state.newListTitle.trim() !== '')
     });
   }
 
+  // Start editing a task by its index and current text
   startTaskEdit(index: number, currentText: string) {
     this.editingTaskIndex.set(index);
     this.editTaskText.set(currentText);
   }
 
+  // Save the edited task text
   saveTaskEdit(index: number) {
     const idx = this.selectedListIndex();
     const newText = this.editTaskText().trim();
@@ -123,11 +130,13 @@ if (typeof state?.newListTitle === 'string' && state.newListTitle.trim() !== '')
     this.editTaskText.set('');
   }
 
+  // Cancel editing a task
   cancelTaskEdit() {
     this.editingTaskIndex.set(null);
     this.editTaskText.set('');
   }
 
+  // Toggle the completed state of a task
   toggleTaskCompleted(taskIndex: number) {
     const idx = this.selectedListIndex();
     if (idx === null) return;
@@ -143,35 +152,40 @@ if (typeof state?.newListTitle === 'string' && state.newListTitle.trim() !== '')
     });
   }
 
+  // signal: returns filtered tasks based on priority
   filteredTasks = computed(() => {
     const idx = this.selectedListIndex();
     if (idx === null) return [];
     const tasks = this.lists()[idx]?.tasks || [];
     const filter = this.priorityFilter();
     if (filter === 'all') return tasks;
-    return tasks.filter((task: any) => task.priority === filter);
+    return tasks.filter((task) => task.priority === filter);
   });
 
+  // signal: true if all tasks in the selected list are completed
   allTasksComplete = computed(() => {
     const idx = this.selectedListIndex();
     if (idx === null) return false;
     const tasks = this.lists()[idx]?.tasks || [];
-    return tasks.length > 0 && tasks.every((task: any) => task.completed);
+    return tasks.length > 0 && tasks.every((task) => task.completed);
   });
 
-  trackByTask(index: number, task: any) {
+  // TrackBy function for ngFor to optimize rendering
+  trackByTask(index: number, task: Task) {
     return task.id;
   }
 
-  isTaskOverdue(task: any): boolean {
+  // Returns true if the task is overdue (deadline before today and not completed)
+  isTaskOverdue(task: Task): boolean {
     if (!task.deadline || task.completed) return false;
     const today = new Date().toISOString().slice(0, 10);
     return task.deadline < today;
   }
 
+  // Returns true if all tasks in the list at the given index are completed
   isListComplete(index: number): boolean {
     const list = this.lists()[index];
     if (!list || !list.tasks.length) return false;
-    return list.tasks.every((task: any) => task.completed);
+    return list.tasks.every((task) => task.completed);
   }
 }

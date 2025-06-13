@@ -1,59 +1,134 @@
-# TaskManager
+# Task Manager
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 19.2.3.
+A simple Angular task manager app with support for multiple lists, priorities, deadlines, completion tracking, and more.
 
-## Development server
+---
 
-To start a local development server, run:
+## 🚀 How to Install and Start the Project
 
-```bash
-ng serve
-```
+1. **Clone the repository**
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+   ```sh
+   git clone <your-repo-url>
+   cd task-manager
+   ```
 
-## Code scaffolding
+2. **Install dependencies**
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+   ```sh
+   npm install
+   ```
 
-```bash
-ng generate component component-name
-```
+3. **Start the development server**
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+   ```sh
+   npm start
+   ```
 
-```bash
-ng generate --help
-```
+   or
 
-## Building
+   ```sh
+   ng serve
+   ```
 
-To build the project run:
+4. **Open in your browser**
+   ```
+   http://localhost:4200
+   ```
 
-```bash
-ng build
-```
+---
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+## 📋 Description of Implemented Functions
 
-## Running unit tests
+- **Multiple Lists:**  
+  Create, select, and delete task lists. Each list is independent.
 
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+- **Add/Edit/Remove Tasks:**  
+  Add tasks to a selected list, edit their text, or remove them.
 
-```bash
-ng test
-```
+- **Task Completion:**  
+  Mark tasks as completed with a checkbox. Completed tasks are visually styled.
 
-## Running end-to-end tests
+- **Priority:**  
+  Assign a priority (low, medium, high) to each task. Filter tasks by priority.
 
-For end-to-end (e2e) testing, run:
+- **Deadlines:**  
+  Set a deadline for each task. Overdue tasks are highlighted.
 
-```bash
-ng e2e
-```
+- **Edit Tasks:**  
+  Inline editing of task descriptions.
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+- **Persistent Storage:**  
+  All lists and tasks are saved in your browser's localStorage.
 
-## Additional Resources
+- **Responsive UI:**  
+  Clean, modern interface using Bulma and custom SCSS.
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+---
+
+## 🛠️ Technical Documentation
+
+### Main Technologies
+
+- **Angular 17+** (standalone components, signals)
+- **TypeScript**
+- **Bulma CSS Framework**
+- **LocalStorage** for persistence
+
+### Main Files and Structure
+
+- `src/app/pages/task-view/task-view.component.ts`  
+  Main logic for managing lists and tasks. Uses Angular signals for state.
+
+- `src/app/pages/task-view/task-view.component.html`  
+  UI for lists, tasks, add/edit forms, and filters.
+
+- `src/app/models/task.ts`  
+  TypeScript interfaces for `Task` and `TaskList`.
+
+- `src/app/pages/new-item/new-item.component.ts`  
+  UI and logic for creating new lists.
+
+- `src/app/core/services/tasks.service.ts`  
+  (Unused, can be removed) Example of an HTTP service.
+
+### Key Signals and Methods
+
+- `lists: signal<TaskList[]>`  
+  All task lists.
+
+- `selectedListIndex: signal<number | null>`  
+  Index of the currently selected list.
+
+- `filteredTasks: computed<Task[]>`  
+  Tasks filtered by priority.
+
+- `allTasksComplete: computed<boolean>`  
+  True if all tasks in the selected list are completed.
+
+- `addTaskToSelectedList()`  
+  Adds a new task to the selected list.
+
+- `removeList(index: number)`  
+  Removes a list.
+
+- `removeTaskFromSelectedList(taskIndex: number)`  
+  Removes a task from the selected list.
+
+- `toggleTaskCompleted(taskIndex: number)`  
+  Toggles a task's completed state.
+
+- `isTaskOverdue(task: Task): boolean`  
+  Returns true if the task's deadline is before today and not completed.
+
+- `isListComplete(index: number): boolean`  
+  Returns true if all tasks in a list are completed.
+
+### Styling
+
+- Uses Bulma for base styles.
+- Custom SCSS for sidebar, task cards, priorities, overdue highlighting, and responsive layout.
+
+---
+
+**Enjoy managing your tasks!**
