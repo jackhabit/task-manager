@@ -7,6 +7,7 @@
           class="list-menu-item"
           *ngFor="let list of lists(); let i = index"
           [class.is-active]="selectedListIndex() === i"
+          [class.complete]="isListComplete(i)"
           (click)="selectList(i)"
           style="
             display: flex;
@@ -27,53 +28,153 @@
         + New List
       </button>
     </div>
-    <div class="task-list-container has-background-light">
+    <div
+      class="task-list-container has-background-light"
+      [class.complete]="allTasksComplete()"
+    >
       <h1 class="title has-text-primary">Tasks</h1>
       <div *ngIf="selectedListIndex() === null">
         <p>Select a list to view tasks.</p>
       </div>
       <div *ngIf="selectedListIndex() !== null" style="margin-bottom: 16px">
-        <button
-          class="button is-primary has-text-white"
-          (click)="showAddTask.set(!showAddTask())"
-          style="margin-bottom: 8px; margin-top: 20px"
-        >
-          + Add Task to "{{ lists()[selectedListIndex()!].title }}"
-        </button>
-        <div *ngIf="showAddTask()">
-          <input
-            type="text"
-            class="input has-background-light is-medium has-text-black"
-            placeholder="Task description"
-            [ngModel]="newTaskText()"
-            (ngModelChange)="newTaskText.set($event)"
-            (keydown.enter)="addTaskToSelectedList()"
-            style="width: 70%; display: inline-block"
-          />
-          <button
-            class="button is-success is-primary has-text-white is-medium"
-            (click)="addTaskToSelectedList()"
+        <div class="add-task-row">
+          <div>
+            <button
+              class="button is-primary has-text-white"
+              (click)="showAddTask.set(!showAddTask())"
+              style="margin-bottom: 8px; margin-top: 20px"
+            >
+              + Add Task to "{{ lists()[selectedListIndex()!].title }}"
+            </button>
+            <div *ngIf="showAddTask()" style="display: inline-block">
+              <input
+                type="text"
+                class="input has-background-light is-medium has-text-black"
+                placeholder="Task description"
+                [ngModel]="newTaskText()"
+                (ngModelChange)="newTaskText.set($event)"
+                (keydown.enter)="addTaskToSelectedList()"
+                style="width: 50%; display: inline-block"
+              />
+              <select
+                class="button is-primary is-medium has-text-white"
+                [ngModel]="priority()"
+                (ngModelChange)="priority.set($event)"
+                style="width: 20%; margin-left: 10px; display: inline-block"
+              >
+                Priority
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+              <input
+                type="date"
+                class="input is-small"
+                [ngModel]="newTaskDeadline()"
+                (ngModelChange)="newTaskDeadline.set($event)"
+                style="
+                  width: 30%;
+                  margin-left: 10px;
+                  margin-top: 10px;
+                  display: inline-block;
+                "
+              />
+              <button
+                class="button is-primary has-text-white is-small"
+                (click)="addTaskToSelectedList()"
+                style="margin-left: 10px; margin-top: 10px"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+          <select
+            class="button is-small is-primary has-text-white"
+            [ngModel]="priorityFilter()"
+            (ngModelChange)="priorityFilter.set($event)"
+            style="width: 120px; margin-left: 10px"
+            title="Filter by priority"
           >
-            Add
-          </button>
+            <option value="all">All</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
         </div>
         <div
           *ngFor="
-            let task of lists()[selectedListIndex()!]?.tasks;
+            let task of filteredTasks();
             let ti = index;
             trackBy: trackByTask
           "
           class="task"
+          [class.complete]="task.completed"
+          [class.overdue]="isTaskOverdue(task)"
         >
-          <p style="display: inline-block; margin: 0; color: black">
-            {{ task.todo }}
-          </p>
-          <button
-            class="delete is-small"
-            style="float: right; margin-left: 10px"
-            (click)="removeTaskFromSelectedList(ti); $event.stopPropagation()"
-            title="Remove task"
-          ></button>
+          <input
+            type="checkbox"
+            [checked]="task.completed"
+            (change)="toggleTaskCompleted(ti)"
+            style="margin-right: 10px"
+          />
+          <ng-container *ngIf="editingTaskIndex() === ti; else showTask">
+            <input
+              type="text"
+              class="input has-background-light is-small has-text-black"
+              [ngModel]="editTaskText()"
+              (ngModelChange)="editTaskText.set($event)"
+              (keydown.enter)="saveTaskEdit(ti)"
+              style="width: 70%; display: inline-block"
+            />
+            <button
+              class="button is-small is-primary has-text-white"
+              (click)="saveTaskEdit(ti)"
+            >
+              Save
+            </button>
+            <button
+              class="button is-small is-primary has-text-white"
+              (click)="cancelTaskEdit()"
+            >
+              Cancel
+            </button>
+          </ng-container>
+          <ng-template #showTask>
+            <p style="display: inline-block; margin: 0; color: black">
+              {{ task.todo }}
+              <span
+                [ngClass]="{
+                  'priority-low': task.priority === 'low',
+                  'priority-medium': task.priority === 'medium',
+                  'priority-high': task.priority === 'high'
+                }"
+                style="margin-left: 10px; font-weight: bold"
+              >
+                [{{ task.priority | titlecase }}]
+              </span>
+              <br />
+              <small style="color: #888">
+                Added: {{ task.createdAt | date : "short" }}
+                <span *ngIf="task.deadline">
+                  | Deadline: {{ task.deadline | date : "mediumDate" }}
+                </span>
+              </small>
+            </p>
+            <button
+              class="button is-small is-primary has-text-white"
+              style="margin-left: 10px"
+              (click)="startTaskEdit(ti, task.todo); $event.stopPropagation()"
+              title="Edit task"
+            >
+              Edit
+            </button>
+            <button
+              class="delete is-small"
+              style="float: right; margin-left: 10px"
+              (click)="removeTaskFromSelectedList(ti); $event.stopPropagation()"
+              title="Remove task"
+            ></button>
+          </ng-template>
         </div>
       </div>
     </div>

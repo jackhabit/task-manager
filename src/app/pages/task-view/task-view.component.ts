@@ -1,4 +1,4 @@
-import { Component, signal, effect } from '@angular/core';
+import { Component, signal, effect, computed } from '@angular/core';
 import { TasksService } from '../../core/services/tasks.service';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
@@ -16,6 +16,12 @@ export class TaskViewComponent {
   selectedListIndex = signal<number | null>(null);
   showAddTask = signal(false);
   newTaskText = signal('');
+  editingTaskIndex = signal<number | null>(null);
+  editTaskText = signal('');
+  priority = signal<'low' | 'medium' | 'high'>('low');
+  priorityFilter = signal<'all' | 'low' | 'medium' | 'high'>('all');
+  newTaskDeadline = signal('');
+  today = new Date().toISOString().slice(0, 10);
 
   constructor(private tasksService: TasksService, private router: Router) {
     // Load lists from localStorage or use default
@@ -45,17 +51,30 @@ if (typeof state?.newListTitle === 'string' && state.newListTitle.trim() !== '')
   addTaskToSelectedList() {
     const idx = this.selectedListIndex();
     const text = this.newTaskText().trim();
+    const deadline = this.newTaskDeadline().trim();
     if (idx === null || !text) return;
     this.lists.update(lists => {
       const newLists = [...lists];
       newLists[idx] = {
         ...newLists[idx],
-        tasks: [...newLists[idx].tasks, { id: Date.now() + Math.random(), todo: text }]
+        tasks: [
+          ...newLists[idx].tasks,
+          {
+            id: Date.now() + Math.random(),
+            todo: text,
+            createdAt: new Date().toISOString(),
+            completed: false,
+            priority: this.priority(),
+            deadline: deadline 
+          }
+        ]
       };
       return newLists;
     });
     this.newTaskText.set('');
+    this.newTaskDeadline.set('');
     this.showAddTask.set(false);
+    this.priority.set('low');
   }
 
   removeList(index: number) {
@@ -84,7 +103,75 @@ if (typeof state?.newListTitle === 'string' && state.newListTitle.trim() !== '')
     });
   }
 
+  startTaskEdit(index: number, currentText: string) {
+    this.editingTaskIndex.set(index);
+    this.editTaskText.set(currentText);
+  }
+
+  saveTaskEdit(index: number) {
+    const idx = this.selectedListIndex();
+    const newText = this.editTaskText().trim();
+    if (idx === null || !newText) return;
+    this.lists.update(lists => {
+      const newLists = [...lists];
+      const newTasks = [...newLists[idx].tasks];
+      newTasks[index] = { ...newTasks[index], todo: newText };
+      newLists[idx] = { ...newLists[idx], tasks: newTasks };
+      return newLists;
+    });
+    this.editingTaskIndex.set(null);
+    this.editTaskText.set('');
+  }
+
+  cancelTaskEdit() {
+    this.editingTaskIndex.set(null);
+    this.editTaskText.set('');
+  }
+
+  toggleTaskCompleted(taskIndex: number) {
+    const idx = this.selectedListIndex();
+    if (idx === null) return;
+    this.lists.update(lists => {
+      const newLists = [...lists];
+      const newTasks = [...newLists[idx].tasks];
+      newTasks[taskIndex] = {
+        ...newTasks[taskIndex],
+        completed: !newTasks[taskIndex].completed
+      };
+      newLists[idx] = { ...newLists[idx], tasks: newTasks };
+      return newLists;
+    });
+  }
+
+  filteredTasks = computed(() => {
+    const idx = this.selectedListIndex();
+    if (idx === null) return [];
+    const tasks = this.lists()[idx]?.tasks || [];
+    const filter = this.priorityFilter();
+    if (filter === 'all') return tasks;
+    return tasks.filter((task: any) => task.priority === filter);
+  });
+
+  allTasksComplete = computed(() => {
+    const idx = this.selectedListIndex();
+    if (idx === null) return false;
+    const tasks = this.lists()[idx]?.tasks || [];
+    return tasks.length > 0 && tasks.every((task: any) => task.completed);
+  });
+
   trackByTask(index: number, task: any) {
     return task.id;
+  }
+
+  isTaskOverdue(task: any): boolean {
+    if (!task.deadline || task.completed) return false;
+    const today = new Date().toISOString().slice(0, 10);
+    return task.deadline < today;
+  }
+
+  isListComplete(index: number): boolean {
+    const list = this.lists()[index];
+    if (!list || !list.tasks.length) return false;
+    return list.tasks.every((task: any) => task.completed);
   }
 }
