@@ -3,11 +3,13 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Task, TaskList } from '../../models/task';
+import { ReactiveFormsModule, FormGroup, FormControl } from '@angular/forms';
+import { TasksService } from '../../core/services/tasks.service';
 
 @Component({
   standalone: true,
   selector: 'app-task-view',
-  imports: [CommonModule, RouterLink, FormsModule],
+  imports: [CommonModule, RouterLink, FormsModule, ReactiveFormsModule],
   templateUrl: './task-view.component.html',
   styleUrl: './task-view.component.scss'
 })
@@ -23,8 +25,13 @@ export class TaskViewComponent {
   priorityFilter = signal<'all' | 'low' | 'medium' | 'high'>('all');
   newTaskDeadline = signal('');
   today = new Date().toISOString().slice(0, 10);
+  searchText = signal('');
 
-  constructor(private router: Router) {
+  form = new FormGroup({
+    date: new FormControl('')
+  });
+
+  constructor(private router: Router, private tasksService: TasksService) {
     // Load lists from localStorage or use default
     const saved = localStorage.getItem('lists');
     this.lists.set(saved ? JSON.parse(saved) as TaskList[] : [{ title: 'List #1', tasks: [] }]);
@@ -54,7 +61,7 @@ export class TaskViewComponent {
   addTaskToSelectedList() {
     const idx = this.selectedListIndex();
     const text = this.newTaskText().trim();
-    const deadline = this.newTaskDeadline().trim();
+    const deadline = this.form.value.date?.trim() || '';
     if (idx === null || !text) return;
     this.lists.update(lists => {
       const newLists = [...lists];
@@ -75,7 +82,7 @@ export class TaskViewComponent {
       return newLists;
     });
     this.newTaskText.set('');
-    this.newTaskDeadline.set('');
+    this.form.reset(); 
     this.showAddTask.set(false);
     this.priority.set('low');
   }
@@ -162,6 +169,13 @@ export class TaskViewComponent {
     return tasks.filter((task) => task.priority === filter);
   });
 
+  searchedTasks = computed(() => {
+    const tasks = this.filteredTasks();
+    const search = this.searchText().toLowerCase();
+    if (!search) return tasks;
+    return tasks.filter(task => task.todo.toLowerCase().includes(search));
+  });
+
   // signal: true if all tasks in the selected list are completed
   allTasksComplete = computed(() => {
     const idx = this.selectedListIndex();
@@ -187,5 +201,35 @@ export class TaskViewComponent {
     const list = this.lists()[index];
     if (!list || !list.tasks.length) return false;
     return list.tasks.every((task) => task.completed);
+  }
+// fetch to add a random task from an external API
+  addRandomTaskFromApi() {
+    this.tasksService.getTodo().subscribe({
+      next: (data) => {
+        const idx = this.selectedListIndex();
+        if (idx === null) return;
+        this.lists.update(lists => {
+          const newLists = [...lists];
+          newLists[idx] = {
+            ...newLists[idx],
+            tasks: [
+              ...newLists[idx].tasks,
+              {
+                id: Date.now() + Math.random(),
+                todo: data.todo || 'Random Task',
+                createdAt: new Date().toISOString(),
+                completed: false,
+                priority: 'low',
+                deadline: undefined
+              }
+            ]
+          };
+          return newLists;
+        });
+      },
+      error: () => {
+        alert('Failed to fetch random task.');
+      }
+    });
   }
 }

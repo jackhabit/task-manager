@@ -23,7 +23,6 @@ describe('NewItemComponent', () => {
   });
 
   it('should not navigate if title is empty', () => {
-    // Mock router
     spyOn(component['router'], 'navigate');
     component.title = '';
     component.createList();

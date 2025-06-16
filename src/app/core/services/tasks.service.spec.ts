@@ -16,21 +16,28 @@ describe('TasksService', () => {
     httpMock = TestBed.inject(HttpTestingController);
   });
 
+  afterEach(() => {
+    httpMock.verify();
+  });
+
   it('should be created', () => {
     expect(service).toBeTruthy();
   });
 
-  it('should fetch todos from API', () => {
-    const mockResponse = { todos: [{ id: 1, todo: 'Test' }] };
+  it('should fetch a random todo from API', (done) => {
+    const mockResponse = {
+      id: 1,
+      todo: 'Test random todo',
+      completed: false,
+      userId: 1
+    };
     service.getTodo().subscribe(data => {
       expect(data).toEqual(mockResponse);
+      done();
     });
-    const req = httpMock.expectOne('https://dummyjson.com/todos');
+    const req = httpMock.expectOne('https://dummyjson.com/todos/random');
     expect(req.request.method).toBe('GET');
     req.flush(mockResponse);
   });
-
-  afterEach(() => {
-    httpMock.verify();
-  });
 });
+
